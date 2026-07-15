@@ -1,0 +1,17 @@
+# AI / ML
+sentence-transformers
+scikit-learn
+numpy
+
+# Gemini
+google-genai
+google-generativeai
+
+# Database
+supabase
+python-dotenv
+
+# Backend
+fastapi
+uvicorn
+

@@ -112,70 +112,121 @@ def calculate_resource_balance(availability_score, workload_score):
 # -----------------------------
 # FINAL PIPELINE (FIXED)
 # -----------------------------
+# ----------------------------------------------------------
+# FINAL WORKLOAD PIPELINE
+# ----------------------------------------------------------
 def calculate_employee_scores(deadline, skill_matching_score, emp_id):
-    
+
+    # ------------------------------------------------------
+    # Validate Deadline
+    # ------------------------------------------------------
     today = datetime.today().date()
     deadline_date = datetime.strptime(deadline, "%Y-%m-%d").date()
 
     if deadline_date <= today:
-        raise ValueError("Deadline must be future date.")
+        raise ValueError("Deadline must be a future date.")
 
+    # ------------------------------------------------------
+    # Time Calculations
+    # ------------------------------------------------------
     total_days = (deadline_date - today).days
 
-    total_weekly_hours = calculate_total_weekly_hours(today, deadline_date)
+    total_weekly_hours = calculate_total_weekly_hours(
+        today,
+        deadline_date
+    )
 
-    # Fetch active tasks from Supabase
-    active_tasks = estimate_active_tasks_from_supabase(emp_id)
+    # ------------------------------------------------------
+    # ACTIVE TASKS
+    # ------------------------------------------------------
+    # Count currently assigned tasks from the database.
+    active_tasks_before_assignment = estimate_active_tasks_from_supabase(
+        emp_id
+    )
 
-# parita chauhan 7-15-2026 , start 
+    # ------------------------------------------------------
+    # AFTER NEW ASSIGNMENT
+    # ------------------------------------------------------
+    # We are evaluating the employee after assigning
+    # the current task.
+    active_tasks_after_assignment = (
+        active_tasks_before_assignment + 1
+    )
 
-    # Include the task currently being assigned
-    active_tasks += 1
+    # ------------------------------------------------------
+    # Availability
+    # ------------------------------------------------------
+    availability = calculate_availability(
+        total_weekly_hours
+    )
 
-# parita chauhan 7-15-2026 , end
-
-    availability = calculate_availability(total_weekly_hours)
-
+    # ------------------------------------------------------
+    # Workload
+    # ------------------------------------------------------
     workload = calculate_workload(
-        total_days,
-        total_weekly_hours,
-        active_tasks
+        total_days=total_days,
+        total_weekly_hours=total_weekly_hours,
+        active_tasks=active_tasks_after_assignment
     )
-
+    # ------------------------------------------------------
+    # Resource Balancing
+    # ------------------------------------------------------
     resource_score = calculate_resource_balance(
-        availability["availability_score"],
-        workload["workload_score"]
+        availability_score=availability["availability_score"],
+        workload_score=workload["workload_score"]
     )
 
-    # -----------------------------
-    # SKILL SCORE NORMALIZATION
-    # -----------------------------
+    # ------------------------------------------------------
+    # Skill Score Normalization
+    # ------------------------------------------------------
     if skill_matching_score <= 1:
         skill_matching_score *= 100
 
-    # -----------------------------
-    # FINAL SCORE
-    # -----------------------------
+    # ------------------------------------------------------
+    # Final Score
+    # ------------------------------------------------------
     final_workload_score = (
         skill_matching_score * 0.70 +
         resource_score * 0.30
     )
 
+    # ------------------------------------------------------
+    # Return Results
+    # ------------------------------------------------------
     return {
+
         "deadline": deadline,
         "total_days": total_days,
+
         "total_task_hours": total_days * WORKING_HOURS_PER_DAY,
         "total_weekly_available_hours": total_weekly_hours,
         "free_hour_before_deadline": availability["free_hours"],
 
+     # --------------------------------------------------
+        # Task Information
+        # --------------------------------------------------
+        "active_tasks_before_assignment":
+            active_tasks_before_assignment,
+
+        "new_task_assigned":
+            True,
+
+        "active_tasks_after_assignment":
+            active_tasks_after_assignment,
+
+        # Availability
         "availability_score": availability["availability_score"],
-        "active_tasks": active_tasks,
+
+        # Workload
         "task_load": workload["task_load_score"],
         "hours_utilization": workload["hours_utilization"],
         "workload_score": workload["workload_score"],
 
+        # Resource Balancing
         "resource_balancing_score": resource_score,
+        # Skill Matching
         "skill_matching_score": round(skill_matching_score, 2),
 
+        # Final Score
         "final_workload_score": round(final_workload_score, 2)
     }

@@ -124,7 +124,7 @@ def generate_employee_workload(
             result["availability_score"],
 
         "active_tasks":
-            result["active_tasks"],
+            result["active_tasks_after_assignment"],
 
         "task_load":
             result["task_load"],
